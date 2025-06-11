@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, EmbedBuilder, InteractionResponseFlags } = require('discord.js');
+const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, EmbedBuilder } = require('discord.js');
 const https = require('https');
 const http = require('http');
 require('dotenv').config();
@@ -14,19 +14,19 @@ const client = new Client({
 
 // Get configuration from .env file
 const TOKEN = process.env.DISCORD_TOKEN;
-const CLIENT_ID = process.env.CLIENT_ID; // Add this to your .env file
-const GUILD_ID = process.env.GUILD_ID; // Add this to your .env file (optional, for guild-specific commands)
+const CLIENT_ID = process.env.CLIENT_ID;
+const GUILD_ID = process.env.GUILD_ID;
 const ANNOUNCEMENT_CHANNEL_ID = process.env.ANNOUNCEMENT_CHANNEL_ID;
 const PATCH_NOTES_CHANNEL_ID = process.env.PATCH_NOTES_CHANNEL_ID;
-const GAME_LINK = process.env.GAME_LINK; // Add your Roblox game link
-const GROUP_LINK = process.env.GROUP_LINK; // Add your Roblox group link
-const DISCORD_INVITE = process.env.DISCORD_INVITE; // Add your Discord invite link
+const GAME_LINK = process.env.GAME_LINK;
+const GROUP_LINK = process.env.GROUP_LINK;
+const DISCORD_INVITE = process.env.DISCORD_INVITE;
 
 // Roblox API Configuration
-const ROBLOX_API_KEY = process.env.ROBLOX_API_KEY; // Open Cloud API Key
-const UNIVERSE_ID = process.env.UNIVERSE_ID; // Your game's Universe ID
-const PLACE_ID = process.env.PLACE_ID; // Your game's Place ID
-const WEBHOOK_PORT = process.env.PORT || 3000; // Port for receiving game updates
+const ROBLOX_API_KEY = process.env.ROBLOX_API_KEY;
+const UNIVERSE_ID = process.env.UNIVERSE_ID;
+const PLACE_ID = process.env.PLACE_ID;
+const WEBHOOK_PORT = process.env.PORT || 3000;
 
 // Check for required environment variables
 if (!TOKEN) {
@@ -50,10 +50,10 @@ if (!PATCH_NOTES_CHANNEL_ID) {
     process.exit(1);
 }
 
-// Roles that can make announcements (add role names)
+// Roles that can make announcements
 const ALLOWED_ROLES = ['ＯＷＮＥＲ', 'Developer', 'Admin'];
 
-// FAQ System - Add your frequently asked questions here
+// FAQ System
 const FAQ_DATA = {
     'When is the game coming out': {
         question: 'When is the game coming out?',
@@ -79,7 +79,7 @@ const FAQ_DATA = {
 
 // Game status tracking
 let gameStatus = {
-    status: 'online', // online, maintenance, issues
+    status: 'online',
     message: 'All systems operational',
     lastUpdated: new Date(),
     playerCount: 0,
@@ -88,7 +88,6 @@ let gameStatus = {
 };
 
 // Function to fetch live game data from Roblox API
-// Updated function to fetch live game data from Roblox API
 async function fetchRobloxGameData() {
     if (!UNIVERSE_ID) {
         console.log('Universe ID not configured - using manual status only');
@@ -96,7 +95,6 @@ async function fetchRobloxGameData() {
     }
 
     try {
-        // Method 1: Get game info using the public Games API (no API key needed)
         const gameInfoResponse = await fetch(`https://games.roblox.com/v1/games?universeIds=${UNIVERSE_ID}`);
         
         if (gameInfoResponse.ok) {
@@ -106,27 +104,11 @@ async function fetchRobloxGameData() {
                 const game = gameData.data[0];
                 const totalPlayers = game.playing || 0;
                 
-                // Update game status with live data
                 gameStatus.playerCount = totalPlayers;
                 gameStatus.lastGameUpdate = new Date();
-                
-                // Try to get server count using thumbnails API (indirect method)
-                try {
-                    const thumbnailResponse = await fetch(`https://thumbnails.roblox.com/v1/games/icons?universeIds=${UNIVERSE_ID}&returnPolicy=PlaceHolder&size=256x256&format=Png&isCircular=false`);
-                    if (thumbnailResponse.ok) {
-                        // If we can get thumbnail data, game is likely online
-                        gameStatus.activeServers = totalPlayers > 0 ? Math.ceil(totalPlayers / 10) : 0; // Estimate servers
-                    }
-                } catch (thumbError) {
-                    console.log('Could not estimate server count');
-                    gameStatus.activeServers = 0;
-                }
+                gameStatus.activeServers = totalPlayers > 0 ? Math.ceil(totalPlayers / 10) : 0;
 
-                // Auto-detect if game is down
-                if (totalPlayers === 0 && gameStatus.status === 'online') {
-                    // Don't immediately mark as down, could just be low player count
-                    console.log('Low player count detected, but not marking as down');
-                } else if (totalPlayers > 0 && gameStatus.status === 'issues') {
+                if (totalPlayers > 0 && gameStatus.status === 'issues') {
                     gameStatus.status = 'online';
                     gameStatus.message = 'All systems operational';
                     gameStatus.lastUpdated = new Date();
@@ -137,13 +119,8 @@ async function fetchRobloxGameData() {
             }
         }
 
-        // Method 2: If you have Open Cloud API access, use this instead
         if (ROBLOX_API_KEY) {
             console.log('Trying Open Cloud API...');
-            
-            // Note: This is for DataStore access, not game instances
-            // For game statistics, you'd need to implement custom tracking in your game
-            // and send data to your webhook endpoint
             
             const response = await fetch(`https://apis.roblox.com/cloud/v2/universes/${UNIVERSE_ID}/data-stores`, {
                 headers: {
@@ -154,8 +131,6 @@ async function fetchRobloxGameData() {
 
             if (response.ok) {
                 console.log('Open Cloud API accessible - you can implement custom game tracking');
-                // You would need to store player count data in a DataStore from your game
-                // and retrieve it here
             } else {
                 console.log('Open Cloud API error:', response.status, response.statusText);
             }
@@ -168,9 +143,6 @@ async function fetchRobloxGameData() {
         return null;
     }
 }
-
-// Alternative: Enhanced webhook method for accurate data
-// Add this to your Roblox game script to send real-time data:
 
 // Create webhook server to receive updates from Roblox game
 function createWebhookServer() {
@@ -186,7 +158,6 @@ function createWebhookServer() {
                 try {
                     const data = JSON.parse(body);
                     
-                    // Update game status with data from Roblox
                     if (data.playerCount !== undefined) {
                         gameStatus.playerCount = data.playerCount;
                     }
@@ -228,17 +199,14 @@ function createWebhookServer() {
 
 // Function to check if user has permission to announce
 function hasAnnouncementPermission(member) {
-    // Check if user is server owner
     if (member.guild.ownerId === member.id) {
         return true;
     }
     
-    // Check if user has Administrator permission
     if (member.permissions.has('Administrator')) {
         return true;
     }
     
-    // Check if user has any of the allowed roles
     return ALLOWED_ROLES.some(roleName => {
         return member.roles.cache.some(role => role.name === roleName);
     });
@@ -246,6 +214,9 @@ function hasAnnouncementPermission(member) {
 
 // Define slash commands
 const commands = [
+    new SlashCommandBuilder()
+        .setName('ping')
+        .setDescription('Test if bot is responding'),
     new SlashCommandBuilder()
         .setName('announce')
         .setDescription('Make an announcement')
@@ -358,45 +329,64 @@ async function deployCommands() {
     try {
         console.log('Started refreshing application (/) commands.');
 
-        // For guild-specific commands (faster update)
+        // Clear existing commands first
         if (GUILD_ID) {
+            console.log('Clearing existing guild commands...');
             await rest.put(
                 Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
-                { body: commands },
+                { body: [] }
             );
+            
+            console.log('Deploying new guild commands...');
+            await rest.put(
+                Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+                { body: commands }
+            );
+            console.log(`Successfully deployed ${commands.length} guild commands.`);
         } else {
-            // For global commands (takes up to 1 hour to update)
+            console.log('Deploying global commands...');
             await rest.put(
                 Routes.applicationCommands(CLIENT_ID),
-                { body: commands },
+                { body: commands }
             );
+            console.log(`Successfully deployed ${commands.length} global commands.`);
         }
 
-        console.log('Successfully reloaded application (/) commands.');
     } catch (error) {
-        console.error(error);
+        console.error('Error deploying commands:', error);
+        if (error.code === 50001) {
+            console.error('Bot is missing access to the guild. Make sure the bot is in the server.');
+        }
     }
 }
 
 // When the client is ready, run this code
 client.once('ready', async () => {
     console.log(`Ready! Logged in as ${client.user.tag}`);
-    console.log(`Bot is online and ready to make announcements!`);
+    console.log(`Bot ID: ${client.user.id}`);
+    console.log(`Connected to ${client.guilds.cache.size} servers`);
     
     // Deploy commands when bot starts
-    await deployCommands();
+    try {
+        await deployCommands();
+    } catch (error) {
+        console.error('Failed to deploy commands:', error);
+    }
     
     // Start webhook server for game updates
-    createWebhookServer();
+    try {
+        createWebhookServer();
+    } catch (error) {
+        console.error('Failed to start webhook server:', error);
+    }
     
     // Fetch live game data every 5 minutes if API is configured
     if (ROBLOX_API_KEY && UNIVERSE_ID) {
         console.log('Roblox API configured - starting live data fetching');
-        setInterval(fetchRobloxGameData, 5 * 60 * 1000); // Every 5 minutes
-        fetchRobloxGameData(); // Initial fetch
+        setInterval(fetchRobloxGameData, 5 * 60 * 1000);
+        fetchRobloxGameData();
     } else {
         console.log('Roblox API not configured - using manual status updates only');
-        console.log('Add ROBLOX_API_KEY and UNIVERSE_ID to .env file for live game data');
     }
 });
 
@@ -404,73 +394,65 @@ client.once('ready', async () => {
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    if (interaction.commandName === 'announce') {
-        // Check if user has permission to make announcements
-        const member = interaction.member;
-        if (!hasAnnouncementPermission(member)) {
-            return await interaction.reply({
-                content: 'You don\'t have permission to make announcements!',
-                flags: InteractionResponseFlags.Ephemeral
+    console.log(`Received command: ${interaction.commandName} from ${interaction.user.tag}`);
+
+    try {
+        if (interaction.commandName === 'ping') {
+            await interaction.reply({
+                content: 'Pong! Bot is working correctly. 🏓',
+                ephemeral: true
             });
+            return;
         }
 
-        // Get the announcement message
-        const announcementText = interaction.options.getString('message');
-        
-        // Get the announcement channel
-        const announcementChannel = client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
-        
-        if (!announcementChannel) {
-            return await interaction.reply({
-                content: 'Announcement channel not found! Please contact an administrator.',
-                flags: InteractionResponseFlags.Ephemeral
-            });
-        }
+        if (interaction.commandName === 'announce') {
+            const member = interaction.member;
+            if (!hasAnnouncementPermission(member)) {
+                return await interaction.reply({
+                    content: 'You don\'t have permission to make announcements!',
+                    ephemeral: true
+                });
+            }
 
-        try {
-            // Send the announcement
-            await announcementChannel.send(announcementText);
+            const announcementText = interaction.options.getString('message');
+            const announcementChannel = client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
             
-            // Confirm to the user (only they can see this)
+            if (!announcementChannel) {
+                return await interaction.reply({
+                    content: 'Announcement channel not found! Please contact an administrator.',
+                    ephemeral: true
+                });
+            }
+
+            await announcementChannel.send(announcementText);
             await interaction.reply({
                 content: 'Announcement sent successfully!',
-                flags: InteractionResponseFlags.Ephemeral
+                ephemeral: true
             });
+        }
+
+        if (interaction.commandName === 'maintenance') {
+            const member = interaction.member;
+            if (!hasAnnouncementPermission(member)) {
+                return await interaction.reply({
+                    content: 'You don\'t have permission to announce maintenance!',
+                    ephemeral: true
+                });
+            }
+
+            const duration = interaction.options.getString('duration');
+            const reason = interaction.options.getString('reason') || 'Scheduled maintenance';
+            const endTime = interaction.options.getString('end_time');
+
+            const announcementChannel = client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
             
-        } catch (error) {
-            console.error('Error sending announcement:', error);
-            await interaction.reply({
-                content: 'Failed to send announcement. Please try again.',
-                flags: InteractionResponseFlags.Ephemeral
-            });
-        }
-    }
+            if (!announcementChannel) {
+                return await interaction.reply({
+                    content: 'Announcement channel not found! Please contact an administrator.',
+                    ephemeral: true
+                });
+            }
 
-    if (interaction.commandName === 'maintenance') {
-        // Check if user has permission
-        const member = interaction.member;
-        if (!hasAnnouncementPermission(member)) {
-            return await interaction.reply({
-                content: 'You don\'t have permission to announce maintenance!',
-                flags: InteractionResponseFlags.Ephemeral
-            });
-        }
-
-        const duration = interaction.options.getString('duration');
-        const reason = interaction.options.getString('reason') || 'Scheduled maintenance';
-        const endTime = interaction.options.getString('end_time');
-
-        // Get the announcement channel
-        const announcementChannel = client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
-        
-        if (!announcementChannel) {
-            return await interaction.reply({
-                content: 'Announcement channel not found! Please contact an administrator.',
-                flags: InteractionResponseFlags.Ephemeral
-            });
-        }
-
-        try {
             let maintenanceEmbed = new EmbedBuilder()
                 .setTitle('🔧 Scheduled Maintenance')
                 .setDescription(`**The game will be undergoing maintenance.**\n\n**Duration:** ${duration}\n**Reason:** ${reason}`)
@@ -478,7 +460,6 @@ client.on('interactionCreate', async interaction => {
                 .setTimestamp()
                 .setFooter({ text: 'We apologize for any inconvenience' });
 
-            // Add end time if provided (Discord will auto-convert to user's timezone)
             if (endTime) {
                 try {
                     const endDate = new Date(endTime);
@@ -495,7 +476,6 @@ client.on('interactionCreate', async interaction => {
                 }
             }
 
-            // Update game status
             gameStatus = {
                 status: 'maintenance',
                 message: `Maintenance in progress: ${reason}`,
@@ -503,216 +483,197 @@ client.on('interactionCreate', async interaction => {
             };
 
             await announcementChannel.send({ embeds: [maintenanceEmbed] });
-            
             await interaction.reply({
                 content: 'Maintenance announcement sent successfully!',
-                flags: InteractionResponseFlags.Ephemeral
+                ephemeral: true
             });
+        }
+
+        if (interaction.commandName === 'gamestatus') {
+            await interaction.deferReply();
             
-        } catch (error) {
-            console.error('Error sending maintenance announcement:', error);
-            await interaction.reply({
-                content: 'Failed to send maintenance announcement. Please try again.',
-                flags: InteractionResponseFlags.Ephemeral
-            });
-        }
-    }
+            await fetchRobloxGameData();
+            
+            const statusEmojis = {
+                'online': '🟢',
+                'maintenance': '🔧',
+                'issues': '⚠️'
+            };
 
-    if (interaction.commandName === 'gamestatus') {
-        // Fetch latest data before showing status
-        await fetchRobloxGameData();
-        
-        const statusEmojis = {
-            'online': '🟢',
-            'maintenance': '🔧',
-            'issues': '⚠️'
-        };
+            const statusColors = {
+                'online': '#00FF00',
+                'maintenance': '#FF9500',
+                'issues': '#FF0000'
+            };
 
-        const statusColors = {
-            'online': '#00FF00',
-            'maintenance': '#FF9500',
-            'issues': '#FF0000'
-        };
+            const statusEmbed = new EmbedBuilder()
+                .setTitle(`${statusEmojis[gameStatus.status]} Game Status`)
+                .setDescription(gameStatus.message)
+                .setColor(statusColors[gameStatus.status])
+                .setTimestamp(gameStatus.lastUpdated)
+                .setFooter({ text: 'Last updated' });
 
-        const statusEmbed = new EmbedBuilder()
-            .setTitle(`${statusEmojis[gameStatus.status]} Game Status`)
-            .setDescription(gameStatus.message)
-            .setColor(statusColors[gameStatus.status])
-            .setTimestamp(gameStatus.lastUpdated)
-            .setFooter({ text: 'Last updated' });
-
-        // Add live game data if available
-        if (gameStatus.playerCount > 0 || gameStatus.activeServers > 0) {
-            statusEmbed.addFields(
-                {
-                    name: '👥 Players Online',
-                    value: gameStatus.playerCount.toString(),
-                    inline: true
-                },
-                {
-                    name: '🖥️ Active Servers',
-                    value: gameStatus.activeServers.toString(),
-                    inline: true
-                }
-            );
-        }
-
-        // Show when game data was last updated
-        if (gameStatus.lastGameUpdate) {
-            const timeDiff = Math.floor((new Date() - gameStatus.lastGameUpdate) / 1000 / 60);
-            statusEmbed.addFields({
-                name: '🔄 Game Data',
-                value: timeDiff < 1 ? 'Just updated' : `Updated ${timeDiff} minutes ago`,
-                inline: true
-            });
-        }
-
-        await interaction.reply({ embeds: [statusEmbed] });
-    }
-
-    if (interaction.commandName === 'setstatus') {
-        // Check if user has permission
-        const member = interaction.member;
-        if (!hasAnnouncementPermission(member)) {
-            return await interaction.reply({
-                content: 'You don\'t have permission to update game status!',
-                flags: InteractionResponseFlags.Ephemeral
-            });
-        }
-
-        const status = interaction.options.getString('status');
-        const message = interaction.options.getString('message');
-
-        gameStatus = {
-            status: status,
-            message: message,
-            lastUpdated: new Date()
-        };
-
-        await interaction.reply({
-            content: `Game status updated to: ${status} - ${message}`,
-            flags: InteractionResponseFlags.Ephemeral
-        });
-    }
-
-    if (interaction.commandName === 'faq') {
-        const topic = interaction.options.getString('topic');
-        const faqItem = FAQ_DATA[topic];
-
-        if (!faqItem) {
-            return await interaction.reply({
-                content: 'FAQ topic not found!',
-                flags: InteractionResponseFlags.Ephemeral
-            });
-        }
-
-        const faqEmbed = new EmbedBuilder()
-            .setTitle(`❓ ${faqItem.question}`)
-            .setDescription(faqItem.answer)
-            .setColor('#5865F2')
-            .setTimestamp()
-            .setFooter({ text: 'Frequently Asked Questions' });
-
-        await interaction.reply({ embeds: [faqEmbed] });
-    }
-
-    if (interaction.commandName === 'links') {
-        const linksEmbed = new EmbedBuilder()
-            .setTitle('🔗 Important Links')
-            .setDescription('Here are all the important links for our community!')
-            .setColor('#5865F2')
-            .setTimestamp();
-
-        // Add game link if available
-        if (GAME_LINK) {
-            linksEmbed.addFields({
-                name: '🎮 Play Game',
-                value: `[Click here to play!](${GAME_LINK})`,
-                inline: true
-            });
-        }
-
-        // Add group link if available
-        if (GROUP_LINK) {
-            linksEmbed.addFields({
-                name: '👥 Roblox Group',
-                value: `[Join our group!](${GROUP_LINK})`,
-                inline: true
-            });
-        }
-
-        // Add Discord invite if available
-        if (DISCORD_INVITE) {
-            linksEmbed.addFields({
-                name: '💬 Discord Server',
-                value: `[Invite friends!](${DISCORD_INVITE})`,
-                inline: true
-            });
-        }
-
-        // Add placeholder links if env variables aren't set
-        if (!GAME_LINK || !GROUP_LINK || !DISCORD_INVITE) {
-            linksEmbed.addFields({
-                name: '⚙️ Setup Required',
-                value: 'Some links need to be configured in the .env file',
-                inline: false
-            });
-        }
-
-        await interaction.reply({ embeds: [linksEmbed] });
-    }
-
-    if (interaction.commandName === 'patchnotes') {
-        // Check if user has permission to make patch notes
-        const member = interaction.member;
-        if (!hasAnnouncementPermission(member)) {
-            return await interaction.reply({
-                content: 'You don\'t have permission to create patch notes! You need one of these roles: ' + ALLOWED_ROLES.join(', '),
-                flags: InteractionResponseFlags.Ephemeral
-            });
-        }
-
-        // Get all the options
-        const version = interaction.options.getString('version');
-        const title = interaction.options.getString('title') || 'Update';
-        const content = interaction.options.getString('content');
-        const balance = interaction.options.getString('balance');
-        const bugfixes = interaction.options.getString('bugfixes');
-        const other = interaction.options.getString('other');
-        const colorInput = interaction.options.getString('color');
-
-        // Parse color
-        let embedColor = '#5865F2'; // Default Discord blue
-        if (colorInput) {
-            if (colorInput.startsWith('#')) {
-                embedColor = colorInput;
-            } else {
-                // Handle color names
-                const colorMap = {
-                    'red': '#FF0000', 'green': '#00FF00', 'blue': '#0000FF',
-                    'yellow': '#FFFF00', 'purple': '#800080', 'orange': '#FFA500',
-                    'pink': '#FFC0CB', 'cyan': '#00FFFF', 'lime': '#32CD32',
-                    'magenta': '#FF00FF', 'brown': '#A52A2A', 'grey': '#808080',
-                    'gray': '#808080', 'black': '#000000', 'white': '#FFFFFF'
-                };
-                embedColor = colorMap[colorInput.toLowerCase()] || embedColor;
+            if (gameStatus.playerCount > 0 || gameStatus.activeServers > 0) {
+                statusEmbed.addFields(
+                    {
+                        name: '👥 Players Online',
+                        value: gameStatus.playerCount.toString(),
+                        inline: true
+                    },
+                    {
+                        name: '🖥️ Active Servers',
+                        value: gameStatus.activeServers.toString(),
+                        inline: true
+                    }
+                );
             }
+
+            if (gameStatus.lastGameUpdate) {
+                const timeDiff = Math.floor((new Date() - gameStatus.lastGameUpdate) / 1000 / 60);
+                statusEmbed.addFields({
+                    name: '🔄 Game Data',
+                    value: timeDiff < 1 ? 'Just updated' : `Updated ${timeDiff} minutes ago`,
+                    inline: true
+                });
+            }
+
+            await interaction.editReply({ embeds: [statusEmbed] });
         }
 
-        // Get the patch notes channel
-        const patchNotesChannel = client.channels.cache.get(PATCH_NOTES_CHANNEL_ID);
-        
-        if (!patchNotesChannel) {
-            return await interaction.reply({
-                content: 'Patch notes channel not found! Please contact an administrator.',
-                flags: InteractionResponseFlags.Ephemeral
+        if (interaction.commandName === 'setstatus') {
+            const member = interaction.member;
+            if (!hasAnnouncementPermission(member)) {
+                return await interaction.reply({
+                    content: 'You don\'t have permission to update game status!',
+                    ephemeral: true
+                });
+            }
+
+            const status = interaction.options.getString('status');
+            const message = interaction.options.getString('message');
+
+            gameStatus = {
+                status: status,
+                message: message,
+                lastUpdated: new Date(),
+                playerCount: gameStatus.playerCount,
+                activeServers: gameStatus.activeServers,
+                lastGameUpdate: gameStatus.lastGameUpdate
+            };
+
+            await interaction.reply({
+                content: `Game status updated to: ${status} - ${message}`,
+                ephemeral: true
             });
         }
 
-        try {
+        if (interaction.commandName === 'faq') {
+            const topic = interaction.options.getString('topic');
+            const faqItem = FAQ_DATA[topic];
+
+            if (!faqItem) {
+                return await interaction.reply({
+                    content: 'FAQ topic not found!',
+                    ephemeral: true
+                });
+            }
+
+            const faqEmbed = new EmbedBuilder()
+                .setTitle(`❓ ${faqItem.question}`)
+                .setDescription(faqItem.answer)
+                .setColor('#5865F2')
+                .setTimestamp()
+                .setFooter({ text: 'Frequently Asked Questions' });
+
+            await interaction.reply({ embeds: [faqEmbed] });
+        }
+
+        if (interaction.commandName === 'links') {
+            const linksEmbed = new EmbedBuilder()
+                .setTitle('🔗 Important Links')
+                .setDescription('Here are all the important links for our community!')
+                .setColor('#5865F2')
+                .setTimestamp();
+
+            if (GAME_LINK) {
+                linksEmbed.addFields({
+                    name: '🎮 Play Game',
+                    value: `[Click here to play!](${GAME_LINK})`,
+                    inline: true
+                });
+            }
+
+            if (GROUP_LINK) {
+                linksEmbed.addFields({
+                    name: '👥 Roblox Group',
+                    value: `[Join our group!](${GROUP_LINK})`,
+                    inline: true
+                });
+            }
+
+            if (DISCORD_INVITE) {
+                linksEmbed.addFields({
+                    name: '💬 Discord Server',
+                    value: `[Invite friends!](${DISCORD_INVITE})`,
+                    inline: true
+                });
+            }
+
+            if (!GAME_LINK || !GROUP_LINK || !DISCORD_INVITE) {
+                linksEmbed.addFields({
+                    name: '⚙️ Setup Required',
+                    value: 'Some links need to be configured in the .env file',
+                    inline: false
+                });
+            }
+
+            await interaction.reply({ embeds: [linksEmbed] });
+        }
+
+        if (interaction.commandName === 'patchnotes') {
+            const member = interaction.member;
+            if (!hasAnnouncementPermission(member)) {
+                return await interaction.reply({
+                    content: 'You don\'t have permission to create patch notes! You need one of these roles: ' + ALLOWED_ROLES.join(', '),
+                    ephemeral: true
+                });
+            }
+
+            const version = interaction.options.getString('version');
+            const title = interaction.options.getString('title') || 'Update';
+            const content = interaction.options.getString('content');
+            const balance = interaction.options.getString('balance');
+            const bugfixes = interaction.options.getString('bugfixes');
+            const other = interaction.options.getString('other');
+            const colorInput = interaction.options.getString('color');
+
+            let embedColor = '#5865F2';
+            if (colorInput) {
+                if (colorInput.startsWith('#')) {
+                    embedColor = colorInput;
+                } else {
+                    const colorMap = {
+                        'red': '#FF0000', 'green': '#00FF00', 'blue': '#0000FF',
+                        'yellow': '#FFFF00', 'purple': '#800080', 'orange': '#FFA500',
+                        'pink': '#FFC0CB', 'cyan': '#00FFFF', 'lime': '#32CD32',
+                        'magenta': '#FF00FF', 'brown': '#A52A2A', 'grey': '#808080',
+                        'gray': '#808080', 'black': '#000000', 'white': '#FFFFFF'
+                    };
+                    embedColor = colorMap[colorInput.toLowerCase()] || embedColor;
+                }
+            }
+
+            const patchNotesChannel = client.channels.cache.get(PATCH_NOTES_CHANNEL_ID);
+            
+            if (!patchNotesChannel) {
+                return await interaction.reply({
+                    content: 'Patch notes channel not found! Please contact an administrator.',
+                    ephemeral: true
+                });
+            }
+
             const embeds = [];
 
-            // Create header embed with version and title - CHANGED "Patch Notes" to "Update Log"
             const headerEmbed = new EmbedBuilder()
                 .setTitle(`Update Log ${version}`)
                 .setDescription(title)
@@ -722,7 +683,6 @@ client.on('interactionCreate', async interaction => {
             
             embeds.push(headerEmbed);
 
-            // Create separate embeds for each section
             if (content) {
                 const contentList = content.split('|').map(item => `• ${item.trim()}`).join('\n');
                 const contentEmbed = new EmbedBuilder()
@@ -751,7 +711,6 @@ client.on('interactionCreate', async interaction => {
             }
 
             if (other) {
-                // Parse custom section (format: SectionName::item1|item2|item3)
                 const [sectionName, ...items] = other.split('::');
                 if (items.length > 0) {
                     const itemList = items.join('::').split('|').map(item => `• ${item.trim()}`).join('\n');
@@ -763,25 +722,30 @@ client.on('interactionCreate', async interaction => {
                 }
             }
 
-            // Send all embeds as separate messages
             for (const embed of embeds) {
                 await patchNotesChannel.send({ embeds: [embed] });
-                // Small delay between messages to maintain order
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
             
-            // Confirm to the user
             await interaction.reply({
                 content: 'Patch notes sent successfully!',
-                flags: InteractionResponseFlags.Ephemeral
+                ephemeral: true
             });
-            
-        } catch (error) {
-            console.error('Error sending patch notes:', error);
-            await interaction.reply({
-                content: 'Failed to send patch notes. Please try again.',
-                flags: InteractionResponseFlags.Ephemeral
-            });
+        }
+
+    } catch (error) {
+        console.error(`Error handling command ${interaction.commandName}:`, error);
+        
+        const errorMessage = 'An error occurred while processing your command. Please try again.';
+        
+        try {
+            if (interaction.deferred) {
+                await interaction.editReply({ content: errorMessage });
+            } else if (!interaction.replied) {
+                await interaction.reply({ content: errorMessage, ephemeral: true });
+            }
+        } catch (replyError) {
+            console.error('Error sending error message:', replyError);
         }
     }
 });
@@ -791,9 +755,20 @@ client.on('error', error => {
     console.error('Discord client error:', error);
 });
 
+client.on('warn', warning => {
+    console.warn('Discord client warning:', warning);
+});
+
 process.on('unhandledRejection', error => {
     console.error('Unhandled promise rejection:', error);
 });
 
+process.on('uncaughtException', error => {
+    console.error('Uncaught exception:', error);
+});
+
 // Login to Discord with your client's token
-client.login(TOKEN);
+client.login(TOKEN).catch(error => {
+    console.error('Failed to login:', error);
+    process.exit(1);
+});
