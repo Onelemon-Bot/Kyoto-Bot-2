@@ -56,24 +56,24 @@ const ALLOWED_ROLES = ['ＯＷＮＥＲ', 'Developer', 'Admin'];
 // FAQ System - Add your frequently asked questions here
 const FAQ_DATA = {
     'how-to-play': {
-        question: 'How do I play the game?',
-        answer: 'Join our Roblox game and follow the tutorial! New players start with a brief introduction to the controls and mechanics.'
+        question: 'When is the game coming out?',
+        answer: 'We have no current release date.'
     },
     'report-bug': {
         question: 'How do I report a bug?',
         answer: 'You can report bugs in our #bug-reports channel or contact a staff member directly. Please include screenshots if possible!'
     },
     'updates': {
-        question: 'When is the next update?',
-        answer: 'Updates are released regularly! Check our #patch-notes channel for the latest information and follow our social media for announcements.'
+        question: 'How often will you update?',
+        answer: 'We have no current schedule for updates.'
     },
     'mobile-support': {
         question: 'Does the game work on mobile?',
-        answer: 'Yes! Our game is fully optimized for mobile devices. Make sure you have a stable internet connection for the best experience.'
+        answer: 'Yes, we are planning on adding mobile support.'
     },
     'data-reset': {
-        question: 'Will my data reset?',
-        answer: 'Your data is safely stored and will not reset unless explicitly announced. We always provide advance notice for any data changes.'
+        question: 'Will my data reset at anypoint?',
+        answer: 'Most likely no.'
     }
 };
 
