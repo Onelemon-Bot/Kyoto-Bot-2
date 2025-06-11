@@ -55,7 +55,7 @@ const ALLOWED_ROLES = ['ＯＷＮＥＲ', 'Developer', 'Admin'];
 
 // FAQ System - Add your frequently asked questions here
 const FAQ_DATA = {
-    'how-to-play': {
+    'When is the game coming out': {
         question: 'When is the game coming out?',
         answer: 'We have no current release date.'
     },
