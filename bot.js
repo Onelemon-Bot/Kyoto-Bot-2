@@ -26,7 +26,7 @@ const DISCORD_INVITE = process.env.DISCORD_INVITE; // Add your Discord invite li
 const ROBLOX_API_KEY = process.env.ROBLOX_API_KEY; // Open Cloud API Key
 const UNIVERSE_ID = process.env.UNIVERSE_ID; // Your game's Universe ID
 const PLACE_ID = process.env.PLACE_ID; // Your game's Place ID
-const WEBHOOK_PORT = process.env.WEBHOOK_PORT || 3000; // Port for receiving game updates
+const WEBHOOK_PORT = process.env.PORT || 3000; // Port for receiving game updates
 
 // Check for required environment variables
 if (!TOKEN) {
@@ -171,56 +171,6 @@ async function fetchRobloxGameData() {
 
 // Alternative: Enhanced webhook method for accurate data
 // Add this to your Roblox game script to send real-time data:
-/*
--- Place this in ServerScriptService in your Roblox game:
-
-local HttpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
-local WEBHOOK_URL = "http://your-server.com:3000/game-status" -- Replace with your actual URL
-
-local function sendGameData()
-    local playerCount = #Players:GetPlayers()
-    local serverData = {
-        playerCount = playerCount,
-        serverId = game.JobId,
-        placeId = game.PlaceId,
-        serverInfo = {
-            maxPlayers = Players.MaxPlayers,
-            timestamp = os.time()
-        },
-        status = "online" -- or "maintenance" if needed
-    }
-    
-    local success, result = pcall(function()
-        return HttpService:PostAsync(WEBHOOK_URL, HttpService:JSONEncode(serverData), Enum.HttpContentType.ApplicationJson)
-    end)
-    
-    if not success then
-        warn("Failed to send game data:", result)
-    end
-end
-
--- Send data every 30 seconds
-spawn(function()
-    while true do
-        sendGameData()
-        wait(30)
-    end
-end)
-
--- Send data when players join/leave
-Players.PlayerAdded:Connect(function()
-    wait(1) -- Small delay to ensure player is fully loaded
-    sendGameData()
-end)
-
-Players.PlayerRemoving:Connect(function()
-    wait(1) -- Small delay before updating
-    sendGameData()
-end)
-*/
 
 // Create webhook server to receive updates from Roblox game
 function createWebhookServer() {
