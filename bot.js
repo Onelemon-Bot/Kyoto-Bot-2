@@ -1078,6 +1078,8 @@ client.on('interactionCreate', async interaction => {
     await interaction.reply({ embeds: [infoEmbed], ephemeral: true });
 }
 
+// ... (previous code remains the same until the last part)
+
 if (interaction.commandName === 'suggestions-list') {
     const member = interaction.member;
     if (!hasAnnouncementPermission(member)) {
@@ -1126,7 +1128,8 @@ if (interaction.commandName === 'suggestions-list') {
     listEmbed.setDescription(suggestionList);
     
     await interaction.reply({ embeds: [listEmbed], ephemeral: true });
-}}});
+}
+}); // This closes the interactionCreate event handler
 
 // Error handling
 client.on('error', error => {
