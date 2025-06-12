@@ -1118,25 +1118,3 @@ if (interaction.commandName === 'suggestions-list') {
     
     await interaction.reply({ embeds: [listEmbed], ephemeral: true });
 }
-// Error handling
-client.on('error', error => {
-    console.error('Discord client error:', error);
-});
-
-client.on('warn', warning => {
-    console.warn('Discord client warning:', warning);
-});
-
-process.on('unhandledRejection', error => {
-    console.error('Unhandled promise rejection:', error);
-});
-
-process.on('uncaughtException', error => {
-    console.error('Uncaught exception:', error);
-});
-
-// Login to Discord with your client's token
-client.login(TOKEN).catch(error => {
-    console.error('Failed to login:', error);
-    process.exit(1);
-});
