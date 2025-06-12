@@ -480,7 +480,16 @@ client.on('interactionCreate', async interaction => {
                 ephemeral: true
             });
             return;
+        } } catch (error) {
+        console.error('Error handling command:', error);
+        if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({
+                content: 'An error occurred while processing your command.',
+                ephemeral: true
+            });
         }
+    }
+
 
         if (interaction.commandName === 'announce') {
             const member = interaction.member;
