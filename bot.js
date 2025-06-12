@@ -480,7 +480,7 @@ client.on('interactionCreate', async interaction => {
                 ephemeral: true
             });
             return;
-        } } catch (error) {
+        } catch (error) {
         console.error('Error handling command:', error);
         if (!interaction.replied && !interaction.deferred) {
             await interaction.reply({
