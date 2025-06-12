@@ -480,16 +480,7 @@ client.on('interactionCreate', async interaction => {
                 ephemeral: true
             });
             return;
-        } catch (error) {
-        console.error('Error handling command:', error);
-        if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({
-                content: 'An error occurred while processing your command.',
-                ephemeral: true
-            });
         }
-    }
-
 
         if (interaction.commandName === 'announce') {
             const member = interaction.member;
@@ -1020,116 +1011,124 @@ client.on('interactionCreate', async interaction => {
         }
 
         if (interaction.commandName === 'suggestion-info') {
-    const suggestionId = interaction.options.getInteger('id');
-    const suggestion = suggestions.get(suggestionId);
-    
-    if (!suggestion) {
-        return await interaction.reply({
-            content: `Suggestion #${suggestionId} not found!`,
-            ephemeral: true
-        });
-    }
-    
-    const statusEmojis = {
-        'pending': '⏳', 'approved': '✅', 'denied': '❌',
-        'reviewing': '🔄', 'implemented': '✨', 'planned': '⏳'
-    };
-    
-    const infoEmbed = new EmbedBuilder()
-        .setTitle(`📋 Suggestion #${suggestionId} Details`)
-        .setDescription(suggestion.text)
-        .setColor('#5865F2')
-        .addFields(
-            {
-                name: '👤 Author',
-                value: suggestion.author.tag,
-                inline: true
-            },
-            {
-                name: '📊 Status',
-                value: `${statusEmojis[suggestion.status]} ${suggestion.status.charAt(0).toUpperCase() + suggestion.status.slice(1)}`,
-                inline: true
-            },
-            {
-                name: '🗳️ Votes',
-                value: `👍 ${suggestion.upvotes} | 👎 ${suggestion.downvotes}`,
-                inline: true
-            },
-            {
-                name: '📅 Created',
-                value: `<t:${Math.floor(suggestion.createdAt.getTime() / 1000)}:F>`,
-                inline: true
-            },
-            {
-                name: '🔄 Last Updated',
-                value: `<t:${Math.floor(suggestion.updatedAt.getTime() / 1000)}:R>`,
-                inline: true
+            const suggestionId = interaction.options.getInteger('id');
+            const suggestion = suggestions.get(suggestionId);
+            
+            if (!suggestion) {
+                return await interaction.reply({
+                    content: `Suggestion #${suggestionId} not found!`,
+                    ephemeral: true
+                });
             }
-        );
-    
-    if (suggestion.reason) {
-        infoEmbed.addFields({
-            name: '📝 Staff Note',
-            value: suggestion.reason,
-            inline: false
-        });
-    }
-    
-    await interaction.reply({ embeds: [infoEmbed], ephemeral: true });
-}
+            
+            const statusEmojis = {
+                'pending': '⏳', 'approved': '✅', 'denied': '❌',
+                'reviewing': '🔄', 'implemented': '✨', 'planned': '⏳'
+            };
+            
+            const infoEmbed = new EmbedBuilder()
+                .setTitle(`📋 Suggestion #${suggestionId} Details`)
+                .setDescription(suggestion.text)
+                .setColor('#5865F2')
+                .addFields(
+                    {
+                        name: '👤 Author',
+                        value: suggestion.author.tag,
+                        inline: true
+                    },
+                    {
+                        name: '📊 Status',
+                        value: `${statusEmojis[suggestion.status]} ${suggestion.status.charAt(0).toUpperCase() + suggestion.status.slice(1)}`,
+                        inline: true
+                    },
+                    {
+                        name: '🗳️ Votes',
+                        value: `👍 ${suggestion.upvotes} | 👎 ${suggestion.downvotes}`,
+                        inline: true
+                    },
+                    {
+                        name: '📅 Created',
+                        value: `<t:${Math.floor(suggestion.createdAt.getTime() / 1000)}:F>`,
+                        inline: true
+                    },
+                    {
+                        name: '🔄 Last Updated',
+                        value: `<t:${Math.floor(suggestion.updatedAt.getTime() / 1000)}:R>`,
+                        inline: true
+                    }
+                );
+            
+            if (suggestion.reason) {
+                infoEmbed.addFields({
+                    name: '📝 Staff Note',
+                    value: suggestion.reason,
+                    inline: false
+                });
+            }
+            
+            await interaction.reply({ embeds: [infoEmbed], ephemeral: true });
+        }
 
-// ... (previous code remains the same until the last part)
+        if (interaction.commandName === 'suggestions-list') {
+            const member = interaction.member;
+            if (!hasAnnouncementPermission(member)) {
+                return await interaction.reply({
+                    content: 'You don\'t have permission to view the suggestions list!',
+                    ephemeral: true
+                });
+            }
+            
+            const statusFilter = interaction.options.getString('status');
+            let filteredSuggestions = Array.from(suggestions.values());
+            
+            if (statusFilter) {
+                filteredSuggestions = filteredSuggestions.filter(s => s.status === statusFilter);
+            }
+            
+            filteredSuggestions.sort((a, b) => b.createdAt - a.createdAt);
+            
+            const statusEmojis = {
+                'pending': '⏳', 'approved': '✅', 'denied': '❌',
+                'reviewing': '🔄', 'implemented': '✨', 'planned': '⏳'
+            };
+            
+            if (filteredSuggestions.length === 0) {
+                return await interaction.reply({
+                    content: statusFilter ? 
+                        `No suggestions found with status: ${statusFilter}` : 
+                        'No suggestions found!',
+                    ephemeral: true
+                });
+            }
+            
+            const itemsPerPage = 10;
+            const totalPages = Math.ceil(filteredSuggestions.length / itemsPerPage);
+            const currentPage = filteredSuggestions.slice(0, itemsPerPage);
+            
+            const listEmbed = new EmbedBuilder()
+                .setTitle(`📋 Suggestions List ${statusFilter ? `(${statusFilter})` : ''}`)
+                .setColor('#5865F2')
+                .setFooter({ text: `Page 1/${totalPages} | Total: ${filteredSuggestions.length}` });
+            
+            const suggestionList = currentPage.map(s => 
+                `**#${s.id}** ${statusEmojis[s.status]} by ${s.author.tag}\n└ ${s.text.substring(0, 80)}${s.text.length > 80 ? '...' : ''}`
+            ).join('\n\n');
+            
+            listEmbed.setDescription(suggestionList);
+            
+            await interaction.reply({ embeds: [listEmbed], ephemeral: true });
+        }
 
-if (interaction.commandName === 'suggestions-list') {
-    const member = interaction.member;
-    if (!hasAnnouncementPermission(member)) {
-        return await interaction.reply({
-            content: 'You don\'t have permission to view the suggestions list!',
-            ephemeral: true
-        });
+    } catch (error) {
+        console.error('Error handling command:', error);
+        if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({
+                content: 'An error occurred while processing your command.',
+                ephemeral: true
+            });
+        }
     }
-    
-    const statusFilter = interaction.options.getString('status');
-    let filteredSuggestions = Array.from(suggestions.values());
-    
-    if (statusFilter) {
-        filteredSuggestions = filteredSuggestions.filter(s => s.status === statusFilter);
-    }
-    
-    filteredSuggestions.sort((a, b) => b.createdAt - a.createdAt);
-    
-    const statusEmojis = {
-        'pending': '⏳', 'approved': '✅', 'denied': '❌',
-        'reviewing': '🔄', 'implemented': '✨', 'planned': '⏳'
-    };
-    
-    if (filteredSuggestions.length === 0) {
-        return await interaction.reply({
-            content: statusFilter ? 
-                `No suggestions found with status: ${statusFilter}` : 
-                'No suggestions found!',
-            ephemeral: true
-        });
-    }
-    
-    const itemsPerPage = 10;
-    const totalPages = Math.ceil(filteredSuggestions.length / itemsPerPage);
-    const currentPage = filteredSuggestions.slice(0, itemsPerPage);
-    
-    const listEmbed = new EmbedBuilder()
-        .setTitle(`📋 Suggestions List ${statusFilter ? `(${statusFilter})` : ''}`)
-        .setColor('#5865F2')
-        .setFooter({ text: `Page 1/${totalPages} | Total: ${filteredSuggestions.length}` });
-    
-    const suggestionList = currentPage.map(s => 
-        `**#${s.id}** ${statusEmojis[s.status]} by ${s.author.tag}\n└ ${s.text.substring(0, 80)}${s.text.length > 80 ? '...' : ''}`
-    ).join('\n\n');
-    
-    listEmbed.setDescription(suggestionList);
-    
-    await interaction.reply({ embeds: [listEmbed], ephemeral: true });
-}
-}); // This closes the interactionCreate event handler
+});
 
 // Error handling
 client.on('error', error => {
