@@ -18,10 +18,10 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 const ANNOUNCEMENT_CHANNEL_ID = process.env.ANNOUNCEMENT_CHANNEL_ID;
 const PATCH_NOTES_CHANNEL_ID = process.env.PATCH_NOTES_CHANNEL_ID;
+const SUGGESTIONS_CHANNEL_ID = process.env.SUGGESTIONS_CHANNEL_ID;
 const GAME_LINK = process.env.GAME_LINK;
 const GROUP_LINK = process.env.GROUP_LINK;
 const DISCORD_INVITE = process.env.DISCORD_INVITE;
-const SUGGESTIONS_CHANNEL_ID = process.env.SUGGESTIONS_CHANNEL_ID;
 
 // Roblox API Configuration
 const ROBLOX_API_KEY = process.env.ROBLOX_API_KEY;
@@ -78,9 +78,6 @@ const FAQ_DATA = {
     }
 };
 
-let suggestions = new Map();
-let suggestionCounter = 1;
-
 // Game status tracking
 let gameStatus = {
     status: 'online',
@@ -90,6 +87,10 @@ let gameStatus = {
     activeServers: 0,
     lastGameUpdate: new Date()
 };
+
+// Suggestion system
+let suggestions = new Map();
+let suggestionCounter = 1;
 
 // Function to fetch live game data from Roblox API
 async function fetchRobloxGameData() {
@@ -324,6 +325,7 @@ const commands = [
     new SlashCommandBuilder()
         .setName('links')
         .setDescription('Get important links for the game and community'),
+    // Suggestion commands
     new SlashCommandBuilder()
         .setName('suggest')
         .setDescription('Submit a suggestion for the game')
@@ -346,7 +348,6 @@ const commands = [
                     { name: '💡 Other', value: 'other' }
                 )
         ),
-    
     new SlashCommandBuilder()
         .setName('suggestion-status')
         .setDescription('Update the status of a suggestion (Staff only)')
@@ -372,7 +373,6 @@ const commands = [
                 .setDescription('Reason for status change (optional)')
                 .setRequired(false)
         ),
-    
     new SlashCommandBuilder()
         .setName('suggestion-info')
         .setDescription('Get detailed info about a suggestion')
@@ -381,7 +381,6 @@ const commands = [
                 .setDescription('Suggestion ID number')
                 .setRequired(true)
         ),
-    
     new SlashCommandBuilder()
         .setName('suggestions-list')
         .setDescription('List suggestions by status (Staff only)')
@@ -397,8 +396,7 @@ const commands = [
                     { name: '✨ Implemented', value: 'implemented' },
                     { name: '⏳ Planned', value: 'planned' }
                 )
-        ),
-
+        )
 ];
 
 // Register slash commands
@@ -812,136 +810,207 @@ client.on('interactionCreate', async interaction => {
             });
         }
 
-    } catch (error) {
-        console.error(`Error handling command ${interaction.commandName}:`, error);
-        
-        const errorMessage = 'An error occurred while processing your command. Please try again.';
-        
-        try {
-            if (interaction.deferred) {
-                await interaction.editReply({ content: errorMessage });
-            } else if (!interaction.replied) {
-                await interaction.reply({ content: errorMessage, ephemeral: true });
+        // Suggestion System Commands
+        if (interaction.commandName === 'suggest') {
+            const suggestionText = interaction.options.getString('suggestion');
+            const category = interaction.options.getString('category') || 'other';
+            
+            if (suggestionText.length > 1000) {
+                return await interaction.reply({
+                    content: 'Suggestion is too long! Please keep it under 1000 characters.',
+                    ephemeral: true
+                });
             }
-        } catch (replyError) {
-            console.error('Error sending error message:', replyError);
-        }
-if (interaction.commandName === 'suggestion-status') {
-    const member = interaction.member;
-    if (!hasAnnouncementPermission(member)) {
-        return await interaction.reply({
-            content: 'You don\'t have permission to manage suggestions!',
-            ephemeral: true
-        });
-    }
-    
-    const suggestionId = interaction.options.getInteger('id');
-    const newStatus = interaction.options.getString('status');
-    const reason = interaction.options.getString('reason');
-    
-    const suggestion = suggestions.get(suggestionId);
-    if (!suggestion) {
-        return await interaction.reply({
-            content: `Suggestion #${suggestionId} not found!`,
-            ephemeral: true
-        });
-    }
-    
-    const suggestionsChannel = client.channels.cache.get(SUGGESTIONS_CHANNEL_ID);
-    if (!suggestionsChannel) {
-        return await interaction.reply({
-            content: 'Suggestions channel not found!',
-            ephemeral: true
-        });
-    }
-    
-    try {
-        const suggestionMessage = await suggestionsChannel.messages.fetch(suggestion.messageId);
-        
-        const statusEmojis = {
-            'pending': '⏳', 'approved': '✅', 'denied': '❌',
-            'reviewing': '🔄', 'implemented': '✨', 'planned': '⏳'
-        };
-        
-        const statusColors = {
-            'pending': '#5865F2', 'approved': '#00FF00', 'denied': '#FF0000',
-            'reviewing': '#FF9500', 'implemented': '#FFD700', 'planned': '#9932CC'
-        };
-        
-        const categoryEmojis = {
-            'gameplay': '🎮', 'cosmetics': '🎨', 'features': '🔧',
-            'maps': '🌍', 'balance': '⚖️', 'bug': '🐛', 'other': '💡'
-        };
-        
-        // Count current reactions for votes
-        const upvotes = suggestionMessage.reactions.cache.get('👍')?.count - 1 || 0;
-        const downvotes = suggestionMessage.reactions.cache.get('👎')?.count - 1 || 0;
-        
-        const updatedEmbed = new EmbedBuilder()
-            .setTitle(`${categoryEmojis[suggestion.category]} Suggestion #${suggestionId}`)
-            .setDescription(suggestion.text)
-            .setColor(statusColors[newStatus])
-            .setAuthor({ 
-                name: suggestion.author.tag, 
-                iconURL: suggestion.author.avatar 
-            })
-            .addFields(
-                {
-                    name: '📊 Status',
-                    value: `${statusEmojis[newStatus]} ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
-                    inline: true
+            
+            const suggestionsChannel = client.channels.cache.get(SUGGESTIONS_CHANNEL_ID);
+            if (!suggestionsChannel) {
+                return await interaction.reply({
+                    content: 'Suggestions channel not configured! Please contact an administrator.',
+                    ephemeral: true
+                });
+            }
+            
+            const suggestionId = suggestionCounter++;
+            const categoryEmojis = {
+                'gameplay': '🎮', 'cosmetics': '🎨', 'features': '🔧',
+                'maps': '🌍', 'balance': '⚖️', 'bug': '🐛', 'other': '💡'
+            };
+            
+            const suggestionEmbed = new EmbedBuilder()
+                .setTitle(`${categoryEmojis[category]} Suggestion #${suggestionId}`)
+                .setDescription(suggestionText)
+                .setColor('#5865F2')
+                .setAuthor({ 
+                    name: interaction.user.tag, 
+                    iconURL: interaction.user.displayAvatarURL() 
+                })
+                .addFields(
+                    {
+                        name: '📊 Status',
+                        value: '⏳ Pending Review',
+                        inline: true
+                    },
+                    {
+                        name: '📂 Category',
+                        value: `${categoryEmojis[category]} ${category.charAt(0).toUpperCase() + category.slice(1)}`,
+                        inline: true
+                    },
+                    {
+                        name: '🗳️ Votes',
+                        value: '👍 0 | 👎 0',
+                        inline: true
+                    }
+                )
+                .setTimestamp()
+                .setFooter({ text: `Suggestion ID: ${suggestionId}` });
+            
+            const suggestionMessage = await suggestionsChannel.send({ embeds: [suggestionEmbed] });
+            
+            // Add voting reactions
+            await suggestionMessage.react('👍');
+            await suggestionMessage.react('👎');
+            
+            // Store suggestion data
+            suggestions.set(suggestionId, {
+                id: suggestionId,
+                text: suggestionText,
+                category: category,
+                author: {
+                    id: interaction.user.id,
+                    tag: interaction.user.tag,
+                    avatar: interaction.user.displayAvatarURL()
                 },
-                {
-                    name: '📂 Category',
-                    value: `${categoryEmojis[suggestion.category]} ${suggestion.category.charAt(0).toUpperCase() + suggestion.category.slice(1)}`,
-                    inline: true
-                },
-                {
-                    name: '🗳️ Votes',
-                    value: `👍 ${upvotes} | 👎 ${downvotes}`,
-                    inline: true
-                }
-            )
-            .setTimestamp(suggestion.createdAt)
-            .setFooter({ text: `Suggestion ID: ${suggestionId} | Updated by ${interaction.user.tag}` });
-        
-        if (reason) {
-            updatedEmbed.addFields({
-                name: '📝 Staff Note',
-                value: reason,
-                inline: false
+                status: 'pending',
+                reason: null,
+                messageId: suggestionMessage.id,
+                upvotes: 0,
+                downvotes: 0,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            });
+            
+            await interaction.reply({
+                content: `✅ Your suggestion has been submitted! (ID: #${suggestionId})\nOthers can now vote on it in <#${SUGGESTIONS_CHANNEL_ID}>`,
+                ephemeral: true
             });
         }
-        
-        await suggestionMessage.edit({ embeds: [updatedEmbed] });
-        
-        // Update stored suggestion
-        suggestion.status = newStatus;
-        suggestion.reason = reason;
-        suggestion.updatedAt = new Date();
-        suggestion.upvotes = upvotes;
-        suggestion.downvotes = downvotes;
-        
-        // If denied or implemented, remove reactions to prevent further voting
-        if (newStatus === 'denied' || newStatus === 'implemented') {
-            await suggestionMessage.reactions.removeAll();
-        }
-        
-        await interaction.reply({
-            content: `✅ Suggestion #${suggestionId} status updated to: ${statusEmojis[newStatus]} ${newStatus}`,
-            ephemeral: true
-        });
-        
-    } catch (error) {
-        console.error('Error updating suggestion:', error);
-        await interaction.reply({
-            content: 'Error updating suggestion. The message may have been deleted.',
-            ephemeral: true
-        });
-    }
-}
 
-if (interaction.commandName === 'suggestion-info') {
+        if (interaction.commandName === 'suggestion-status') {
+            const member = interaction.member;
+            if (!hasAnnouncementPermission(member)) {
+                return await interaction.reply({
+                    content: 'You don\'t have permission to manage suggestions!',
+                    ephemeral: true
+                });
+            }
+            
+            const suggestionId = interaction.options.getInteger('id');
+            const newStatus = interaction.options.getString('status');
+            const reason = interaction.options.getString('reason');
+            
+            const suggestion = suggestions.get(suggestionId);
+            if (!suggestion) {
+                return await interaction.reply({
+                    content: `Suggestion #${suggestionId} not found!`,
+                    ephemeral: true
+                });
+            }
+            
+            const suggestionsChannel = client.channels.cache.get(SUGGESTIONS_CHANNEL_ID);
+            if (!suggestionsChannel) {
+                return await interaction.reply({
+                    content: 'Suggestions channel not found!',
+                    ephemeral: true
+                });
+            }
+            
+            try {
+                const suggestionMessage = await suggestionsChannel.messages.fetch(suggestion.messageId);
+                
+                const statusEmojis = {
+                    'pending': '⏳', 'approved': '✅', 'denied': '❌',
+                    'reviewing': '🔄', 'implemented': '✨', 'planned': '⏳'
+                };
+                
+                const statusColors = {
+                    'pending': '#5865F2', 'approved': '#00FF00', 'denied': '#FF0000',
+                    'reviewing': '#FF9500', 'implemented': '#FFD700', 'planned': '#9932CC'
+                };
+                
+                const categoryEmojis = {
+                    'gameplay': '🎮', 'cosmetics': '🎨', 'features': '🔧',
+                    'maps': '🌍', 'balance': '⚖️', 'bug': '🐛', 'other': '💡'
+                };
+                
+                // Count current reactions for votes
+                const upvotes = suggestionMessage.reactions.cache.get('👍')?.count - 1 || 0;
+                const downvotes = suggestionMessage.reactions.cache.get('👎')?.count - 1 || 0;
+                
+                const updatedEmbed = new EmbedBuilder()
+                    .setTitle(`${categoryEmojis[suggestion.category]} Suggestion #${suggestionId}`)
+                    .setDescription(suggestion.text)
+                    .setColor(statusColors[newStatus])
+                    .setAuthor({ 
+                        name: suggestion.author.tag, 
+                        iconURL: suggestion.author.avatar 
+                    })
+                    .addFields(
+                        {
+                            name: '📊 Status',
+                            value: `${statusEmojis[newStatus]} ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
+                            inline: true
+                        },
+                        {
+                            name: '📂 Category',
+                            value: `${categoryEmojis[suggestion.category]} ${suggestion.category.charAt(0).toUpperCase() + suggestion.category.slice(1)}`,
+                            inline: true
+                        },
+                        {
+                            name: '🗳️ Votes',
+                            value: `👍 ${upvotes} | 👎 ${downvotes}`,
+                            inline: true
+                        }
+                    )
+                    .setTimestamp(suggestion.createdAt)
+                    .setFooter({ text: `Suggestion ID: ${suggestionId} | Updated by ${interaction.user.tag}` });
+                
+                if (reason) {
+                    updatedEmbed.addFields({
+                        name: '📝 Staff Note',
+                        value: reason,
+                        inline: false
+                    });
+                }
+                
+                await suggestionMessage.edit({ embeds: [updatedEmbed] });
+                
+                // Update stored suggestion
+                suggestion.status = newStatus;
+                suggestion.reason = reason;
+                suggestion.updatedAt = new Date();
+                suggestion.upvotes = upvotes;
+                suggestion.downvotes = downvotes;
+                
+                // If denied or implemented, remove reactions to prevent further voting
+                if (newStatus === 'denied' || newStatus === 'implemented') {
+                    await suggestionMessage.reactions.removeAll();
+                }
+                
+                await interaction.reply({
+                    content: `✅ Suggestion #${suggestionId} status updated to: ${statusEmojis[newStatus]} ${newStatus}`,
+                    ephemeral: true
+                });
+                
+            } catch (error) {
+                console.error('Error updating suggestion:', error);
+                await interaction.reply({
+                    content: 'Error updating suggestion. The message may have been deleted.',
+                    ephemeral: true
+                });
+            }
+        }
+
+        if (interaction.commandName === 'suggestion-info') {
     const suggestionId = interaction.options.getInteger('id');
     const suggestion = suggestions.get(suggestionId);
     
@@ -1049,9 +1118,6 @@ if (interaction.commandName === 'suggestions-list') {
     
     await interaction.reply({ embeds: [listEmbed], ephemeral: true });
 }
-    }
-});
-
 // Error handling
 client.on('error', error => {
     console.error('Discord client error:', error);
