@@ -1126,7 +1126,7 @@ if (interaction.commandName === 'suggestions-list') {
     listEmbed.setDescription(suggestionList);
     
     await interaction.reply({ embeds: [listEmbed], ephemeral: true });
-}}}}
+}}});
 
 // Error handling
 client.on('error', error => {
